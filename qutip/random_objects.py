@@ -36,18 +36,17 @@ def rand_jacobi_rotation(A, seed=None):
     spmatrix
         Rotated sparse matrix.
     """
-    if seed is not None:
-        np.random.seed(seed=seed)
+    rng = np.random.default_rng(seed=seed)
     if A.shape[0] != A.shape[1]:
         raise ValueError('Input matrix must be square.')
     n = A.shape[0]
-    angle = 2*np.random.random()*np.pi
+    angle = 2*rng.random()*np.pi
     a = 1.0/np.sqrt(2)*np.exp(-1j*angle)
     b = 1.0/np.sqrt(2)*np.exp(1j*angle)
-    i = int(np.floor(np.random.random()*n))
+    i = int(np.floor(rng.random()*n))
     j = i
     while i == j:
-        j = int(np.floor(np.random.random()*n))
+        j = int(np.floor(rng.random()*n))
     data = np.hstack((np.array([a, -b, a, b], dtype=complex),
                       np.ones(n-2, dtype=complex)))
     diag = np.delete(np.arange(n), [i, j])
@@ -74,11 +73,10 @@ def randnz(shape, norm=1 / np.sqrt(2), seed=None):
         Scale of the returned random variates, or 'ginibre' to draw
         from the Ginibre ensemble.
     """
-    if seed is not None:
-        np.random.seed(seed=seed)
+    rng = np.random.default_rng(seed=seed)
     if norm == 'ginibre':
         norm = 1
-    return np.sum(np.random.randn(*(shape + (2,))) * UNITS, axis=-1) * norm
+    return np.sum(rng.standard_normal(*(shape + (2,))) * UNITS, axis=-1) * norm
 
 
 def rand_herm(N, density=0.75, dims=None, pos_def=False, seed=None):
@@ -116,8 +114,7 @@ def rand_herm(N, density=0.75, dims=None, pos_def=False, seed=None):
     is ~50% faster than the corresponding (real only) Matlab code, it should
     not be repeatedly used for generating matrices larger than ~1000x1000.
     """
-    if seed is not None:
-        np.random.seed(seed=seed)
+    rng = np.random.default_rng(seed=seed)
     if isinstance(N, (np.ndarray, list)):
         M = sp.diags(N, 0, dtype=complex, format='csr')
         N = len(N)
@@ -145,11 +142,11 @@ def _rand_herm_sparse(N, density, pos_def):
     num_elems = (N**2 - 0.666 * N) * target + 0.666 * N * density
     num_elems = max([num_elems, 1])
     num_elems = int(num_elems)
-    data = (2 * np.random.rand(num_elems) - 1) + \
-           (2 * np.random.rand(num_elems) - 1) * 1j
+    data = (2 * rng.standard_normal(num_elems) - 1) + \
+           (2 * rng.standard_normal(num_elems) - 1) * 1j
     row_idx, col_idx = zip(*[
         divmod(index, N)
-        for index in np.random.choice(N*N, num_elems, replace=False)
+        for index in rng.choice(N*N, num_elems, replace=False)
     ])
     M = sp.coo_matrix((data, (row_idx, col_idx)),
                       dtype=complex, shape=(N, N))
@@ -164,15 +161,15 @@ def _rand_herm_sparse(N, density, pos_def):
 
 def _rand_herm_dense(N, density, pos_def):
     M = (
-        (2*np.random.rand(N, N) - 1)
-        + 1j*(2*np.random.rand(N, N) - 1)
+        (2*rng.standard_normal(N, N) - 1)
+        + 1j*(2*rng.standard_nromal(N, N) - 1)
     )
     M = 0.5 * (M + M.conj().transpose())
     target = 1 - density**0.5
     num_remove = N * (N - 0.666) * target + 0.666 * N * (1 - density)
     num_remove = max([num_remove, 1])
     num_remove = int(num_remove)
-    for index in np.random.choice(N*N, num_remove, replace=False):
+    for index in rng.choice(N*N, num_remove, replace=False):
         row, col = divmod(index, N)
         M[col, row] = 0
         M[row, col] = 0
@@ -289,8 +286,7 @@ def rand_ket(N=None, density=1, dims=None, seed=None):
         If neither `N` or `dims` are specified.
 
     """
-    if seed is not None:
-        np.random.seed(seed=seed)
+    rng = np.random.default_rng(seed=seed)
     if N is None and dims is None:
         raise ValueError('Specify either the number of rows of state vector'
                          '(N) or dimensions of quantum object (dims)')
@@ -307,7 +303,7 @@ def rand_ket(N=None, density=1, dims=None, seed=None):
         X = sp.rand(N, 1, density+1/N, format='csr')
     X.data = X.data - 0.5
     Y = X.copy()
-    Y.data = 1.0j * (np.random.random(len(X.data)) - 0.5)
+    Y.data = 1.0j * (rng.random(len(X.data)) - 0.5)
     X = X + Y
     X.sort_indices()
     X = Qobj(X)
@@ -532,7 +528,7 @@ def rand_super(N=5, dims=None, seed=None):
     else:
         dims = [[[N], [N]], [[N], [N]]]
     H = rand_herm(N, seed=seed)
-    S = propagator(H, np.random.rand(), [
+    S = propagator(H, rng.random(), [
         create(N), destroy(N), jmat(float(N - 1) / 2.0, 'z')
     ])
     S.dims = dims
@@ -652,17 +648,16 @@ def rand_stochastic(N, density=0.75, kind='left', dims=None, seed=None):
     oper : qobj
         Quantum operator form of stochastic matrix.
     """
-    if seed is not None:
-        np.random.seed(seed=seed)
+    rng = np.random.default_rng(seed=seed)
     if dims:
         _check_dims(dims, N, N)
     num_elems = max([int(np.ceil(N*(N+1)*density)/2), N])
-    data = np.random.rand(num_elems)
+    data = rng.random(num_elems)
     # Ensure an element on every row and column
-    row_idx = np.hstack([np.random.permutation(N),
-                         np.random.choice(N, num_elems-N)])
-    col_idx = np.hstack([np.random.permutation(N),
-                         np.random.choice(N, num_elems-N)])
+    row_idx = np.hstack([rng.permutation(N),
+                         rng.choice(N, num_elems-N)])
+    col_idx = np.hstack([rng.permutation(N),
+                         rng.choice(N, num_elems-N)])
     M = sp.coo_matrix((data, (row_idx, col_idx)),
                       dtype=float, shape=(N, N)).tocsr()
     M = 0.5 * (M + M.conj().transpose())

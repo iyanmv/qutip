@@ -215,7 +215,7 @@ def measurement_statistics_observable(state, op, targets=None):
         return eigenvalues, projectors, probabilities
 
 
-def measure_observable(state, op, targets=None):
+def measure_observable(state, op, targets=None, seed=None):
     """
     Perform a measurement specified by an operator on the given state.
 
@@ -285,9 +285,10 @@ def measure_observable(state, op, targets=None):
     The measurement result is the same, but the new state is returned as a
     density matrix.
     """
+    rng = np.random.default_rng(seed=seed)
     eigenvalues, eigenstates_or_projectors, probabilities = (
         measurement_statistics_observable(state, op, targets))
-    i = np.random.choice(range(len(eigenvalues)), p=probabilities)
+    i = rng.choice(range(len(eigenvalues)), p=probabilities)
     if state.isket:
         eigenstates = eigenstates_or_projectors
         state = eigenstates[i]
@@ -297,7 +298,7 @@ def measure_observable(state, op, targets=None):
     return eigenvalues[i], state
 
 
-def measure_povm(state, ops, targets=None):
+def measure_povm(state, ops, targets=None, seed=None):
     r"""
     Perform a measurement specified by list of POVMs.
 
@@ -333,9 +334,10 @@ def measure_povm(state, ops, targets=None):
     state : :class:`.Qobj`
         The new state (a ket if a ket was given, otherwise a density matrix).
     """
+    rng = np.random.default_rng(seed=seed)
     collapsed_states, probabilities = measurement_statistics_povm(state,
                                                                   ops, targets)
-    index = np.random.choice(range(len(collapsed_states)), p=probabilities)
+    index = rng.choice(range(len(collapsed_states)), p=probabilities)
     state = collapsed_states[index]
     return index, state
 
